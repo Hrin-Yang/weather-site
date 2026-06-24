@@ -1,16 +1,20 @@
 const form = document.querySelector("#search-form");
 const input = document.querySelector("#city-input");
+const searchBox = document.querySelector("#search-box");
+const dropdown = document.querySelector("#area-dropdown");
 const statusBar = document.querySelector("#status-bar");
 const statusText = document.querySelector("#status-text");
 const dashboard = document.querySelector("#dashboard");
 const contentGrid = document.querySelector("#content-grid");
 const recentPanel = document.querySelector("#recent-panel");
 const recentList = document.querySelector("#recent-list");
+const hotList = document.querySelector("#hot-list");
 const areaOptions = document.querySelector("#area-options");
 const pickerTitle = document.querySelector("#picker-title");
 const tabButtons = [...document.querySelectorAll("[data-level]")];
 
 const HISTORY_KEY = "weather-site-search-history";
+const hotCities = ["北京", "上海", "广州", "深圳", "杭州", "成都", "重庆", "武汉", "南京", "苏州", "长沙", "西安", "黄冈", "浠水"];
 
 const cityAliases = {
   "浠水": { name: "浠水", admin1: "湖北省", admin2: "黄冈市", country: "中国", latitude: 30.4518, longitude: 115.2655 },
@@ -51,15 +55,23 @@ const pickerState = {
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   loadWeather(input.value.trim());
+  closeDropdown();
 });
 
 input.addEventListener("focus", () => {
-  renderHistory();
-  showLevel("province");
+  openDropdown();
+  renderPickerHome();
 });
 
 input.addEventListener("input", () => {
+  openDropdown();
   renderFilteredAreas(input.value.trim());
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!searchBox.contains(event.target)) {
+    closeDropdown();
+  }
 });
 
 tabButtons.forEach((button) => {
@@ -76,9 +88,24 @@ async function init() {
     pickerState.areaData = {};
   }
 
+  renderHotCities();
   renderHistory();
   renderAreaOptions();
   loadWeather("浠水");
+}
+
+function openDropdown() {
+  dropdown.hidden = false;
+}
+
+function closeDropdown() {
+  dropdown.hidden = true;
+}
+
+function renderPickerHome() {
+  renderHistory();
+  pickerState.level = "province";
+  renderAreaOptions();
 }
 
 function setStatus(message, isError = false) {
@@ -181,6 +208,30 @@ function renderWeather(place, weather) {
   renderTips(today, weather.current.temperature_2m);
 }
 
+function renderHotCities() {
+  hotList.innerHTML = "";
+  hotCities.forEach((city) => hotList.appendChild(createCityButton(city)));
+}
+
+function renderHistory() {
+  const history = getHistory();
+  recentPanel.hidden = history.length === 0;
+  recentList.innerHTML = "";
+  history.forEach((city) => recentList.appendChild(createCityButton(city)));
+}
+
+function createCityButton(city) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = city;
+  button.addEventListener("click", () => {
+    input.value = city;
+    closeDropdown();
+    loadWeather(city);
+  });
+  return button;
+}
+
 function showLevel(level) {
   if (level === "city" && !pickerState.province) return;
   if (level === "district" && !pickerState.city) return;
@@ -203,28 +254,28 @@ function renderAreaOptions() {
   }
 
   if (level === "city") {
-    pickerTitle.textContent = `选择城市 · ${province}`;
+    pickerTitle.textContent = `选择城市 · ${cleanAreaName(province)}`;
     renderChips(Object.keys(areaData[province] || {}), selectCity);
     return;
   }
 
-  pickerTitle.textContent = `选择区县 · ${city}`;
+  pickerTitle.textContent = `选择区县 · ${cleanAreaName(city)}`;
   renderChips((areaData[province] && areaData[province][city]) || [], selectDistrict);
 }
 
 function renderFilteredAreas(keyword) {
   if (!keyword) {
-    renderAreaOptions();
+    renderPickerHome();
     return;
   }
 
   const results = [];
   Object.entries(pickerState.areaData).forEach(([province, cities]) => {
-    if (province.includes(keyword)) results.push({ label: province, value: province, type: "province" });
+    if (province.includes(keyword)) results.push({ label: province, value: province });
     Object.entries(cities).forEach(([city, districts]) => {
-      if (city.includes(keyword)) results.push({ label: `${province} · ${city}`, value: city, type: "city" });
+      if (city.includes(keyword)) results.push({ label: `${province} · ${city}`, value: city });
       districts.forEach((district) => {
-        if (district.includes(keyword)) results.push({ label: `${city} · ${district}`, value: district, type: "district" });
+        if (district.includes(keyword)) results.push({ label: `${city} · ${district}`, value: district });
       });
     });
   });
@@ -232,7 +283,8 @@ function renderFilteredAreas(keyword) {
   pickerTitle.textContent = results.length ? "搜索匹配地区" : "未找到匹配地区，可直接点查看";
   renderChips(results.slice(0, 36), (item) => {
     const value = item.value || item;
-    input.value = value;
+    input.value = cleanAreaName(value);
+    closeDropdown();
     loadWeather(value);
   });
 }
@@ -266,6 +318,7 @@ function selectCity(city) {
 
 function selectDistrict(district) {
   input.value = cleanAreaName(district);
+  closeDropdown();
   loadWeather(district);
 }
 
@@ -281,22 +334,6 @@ function saveHistory(city) {
   const clean = cleanAreaName(city);
   const next = [clean, ...getHistory().filter((item) => item !== clean)].slice(0, 8);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-}
-
-function renderHistory() {
-  const history = getHistory();
-  recentPanel.hidden = history.length === 0;
-  recentList.innerHTML = "";
-  history.forEach((city) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = city;
-    button.addEventListener("click", () => {
-      input.value = city;
-      loadWeather(city);
-    });
-    recentList.appendChild(button);
-  });
 }
 
 function getWeather(code) {
