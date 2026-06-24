@@ -126,10 +126,12 @@ function openDropdown() {
 
 function closeDropdown() {
   dropdown.hidden = true;
+  dropdown.classList.remove("is-compact");
 }
 
 function renderPickerHome() {
   renderHistory();
+  dropdown.classList.remove("is-compact");
   pickerState.level = "province";
   renderAreaOptions();
 }
@@ -295,6 +297,8 @@ function renderFilteredAreas(keyword) {
     return;
   }
 
+  dropdown.classList.add("is-compact");
+
   const provinceMatch = findProvinceMatch(keyword);
   if (provinceMatch) {
     pickerState.province = provinceMatch;
@@ -365,7 +369,7 @@ function findProvinceMatch(keyword) {
   const cleanKeyword = cleanAreaName(keyword);
   return Object.keys(pickerState.areaData).find((province) => {
     const cleanProvince = cleanAreaName(province);
-    return cleanProvince === cleanKeyword || province === keyword;
+    return cleanProvince === cleanKeyword || province === keyword || cleanProvince === keyword;
   });
 }
 
@@ -374,7 +378,7 @@ function findCityMatch(keyword) {
   for (const [province, cities] of Object.entries(pickerState.areaData)) {
     const city = Object.keys(cities).find((item) => {
       const cleanCity = cleanAreaName(item);
-      return cleanCity === cleanKeyword || item === keyword;
+      return cleanCity === cleanKeyword || item === keyword || cleanCity === keyword;
     });
 
     if (city) {
@@ -460,11 +464,7 @@ function formatPlace(place) {
 }
 
 function cleanAreaName(name) {
-  return String(name || "")
-    .replace(/省$/, "")
-    .replace(/市$/, "")
-    .replace(/县$/, "")
-    .replace(/区$/, "");
+  return String(name || "").replace(/(省|市|县|区)$/u, "");
 }
 
 function buildAdvice(day, code, temp) {

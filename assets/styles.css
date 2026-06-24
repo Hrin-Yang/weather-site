@@ -132,8 +132,9 @@ button {
     linear-gradient(135deg, rgba(74, 168, 255, 0.18), rgba(255, 85, 216, 0.12));
   box-shadow: var(--shadow);
   backdrop-filter: blur(22px);
-  overflow: hidden;
+  overflow: visible;
   position: relative;
+  z-index: 10;
 }
 
 .hero-panel::before {
@@ -277,6 +278,12 @@ h1 {
   background: rgba(7, 13, 33, 0.96);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(24px);
+}
+
+.area-dropdown.is-compact #recent-panel,
+.area-dropdown.is-compact #hot-panel,
+.area-dropdown.is-compact .picker-tabs {
+  display: none;
 }
 
 .area-dropdown[hidden] {
@@ -613,6 +620,10 @@ h1 {
   .hero-panel {
     padding: 24px;
     border-radius: 22px;
+  }
+
+  .area-dropdown {
+    max-height: 54vh;
   }
 
   .current-card {
