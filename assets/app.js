@@ -7,10 +7,6 @@ const statusText = document.querySelector("#status-text");
 const dashboard = document.querySelector("#dashboard");
 const contentGrid = document.querySelector("#content-grid");
 const locateButton = document.querySelector("#locate-button");
-const locationRow = document.querySelector("#location-row");
-const locationTitle = document.querySelector("#location-title");
-const locationSubtitle = document.querySelector("#location-subtitle");
-const locationAction = document.querySelector("#location-action");
 const recentPanel = document.querySelector("#recent-panel");
 const recentList = document.querySelector("#recent-list");
 const hotList = document.querySelector("#hot-list");
@@ -87,15 +83,6 @@ document.addEventListener("pointerdown", (event) => {
 });
 
 locateButton.addEventListener("click", () => locateUser());
-locationRow.addEventListener("click", () => {
-  if (pickerState.currentLocation) {
-    input.value = pickerState.currentLocation.inputName;
-    closeDropdown();
-    return;
-  }
-
-  locateUser();
-});
 
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => showLevel(button.dataset.level));
@@ -106,7 +93,6 @@ init();
 async function init() {
   pickerState.areaData = window.CHINA_AREA_DATA || getFallbackAreaData();
   pickerState.currentLocation = getStoredLocation();
-  renderLocationRow();
   renderHotCities();
   renderHistory();
   renderAreaOptions();
@@ -123,7 +109,6 @@ function closeDropdown() {
 }
 
 function renderPickerHome() {
-  renderLocationRow();
   renderHistory();
   dropdown.classList.remove("is-compact");
   pickerState.level = "province";
@@ -144,9 +129,8 @@ async function locateUser() {
   }
 
   setStatus("正在快速定位当前位置...");
-  locationTitle.textContent = "正在定位...";
-  locationSubtitle.textContent = "正在快速获取设备当前位置";
-  locationAction.textContent = "等待";
+  locateButton.textContent = "定位中";
+  locateButton.disabled = true;
 
   try {
     const position = await getBestPosition(5000);
@@ -154,10 +138,12 @@ async function locateUser() {
     applyLocatedPlace(place);
     setStatus(`已定位：${formatPlace(place)}，点击查看即可查询当前位置天气。`);
   } catch {
-    renderLocationRow();
     const message = "请打开手机系统定位，并允许浏览器使用精确定位权限后再试。";
     alert(message);
     setStatus(message, true);
+  } finally {
+    locateButton.textContent = "定位";
+    locateButton.disabled = false;
   }
 }
 
@@ -168,7 +154,6 @@ function applyLocatedPlace(place) {
   pickerState.currentLocation = place;
   localStorage.setItem(LOCATION_KEY, JSON.stringify(place));
   input.value = place.inputName;
-  renderLocationRow();
   closeDropdown();
 }
 
@@ -289,19 +274,6 @@ function isResolvedLocation(place) {
     .filter((value) => value && value !== "中国" && value !== "当前位置");
   const hasSpecificArea = Boolean(cleanAreaName(place.admin2 || "") || cleanAreaName(place.name || ""));
   return parts.length >= 2 && hasSpecificArea && cleanAreaName(place.inputName || "") !== "当前位置";
-}
-
-function renderLocationRow() {
-  if (pickerState.currentLocation) {
-    locationTitle.textContent = formatPlace(pickerState.currentLocation);
-    locationSubtitle.textContent = "点击后自动填入搜索框，再点查看查询天气";
-    locationAction.textContent = "填入";
-    return;
-  }
-
-  locationTitle.textContent = "使用当前位置";
-  locationSubtitle.textContent = "授权后会优先显示你的定位天气";
-  locationAction.textContent = "定位";
 }
 
 function getStoredLocation() {

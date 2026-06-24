@@ -325,40 +325,6 @@ h1 {
   border-bottom: 0;
 }
 
-.location-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  border: 1px solid rgba(124, 231, 255, 0.28);
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: var(--ink);
-  text-align: left;
-  background: linear-gradient(135deg, rgba(74, 168, 255, 0.18), rgba(255, 85, 216, 0.14));
-}
-
-.location-row strong {
-  display: block;
-  margin-bottom: 4px;
-}
-
-.location-row small {
-  display: block;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.location-action {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  padding: 7px 12px;
-  color: white;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--blue), var(--violet), var(--pink));
-}
-
 .picker-tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
