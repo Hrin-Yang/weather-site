@@ -10,25 +10,41 @@
   <link rel="stylesheet" href="./assets/styles.css">
 </head>
 <body>
+  <div class="cyber-bg" aria-hidden="true">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+
   <main class="app-shell">
     <section class="hero-panel">
       <div class="hero-copy">
-        <p class="eyebrow">Weather Moodboard</p>
-        <h1>天气不只看温度，也看今天适不适合出门。</h1>
-        <p class="hero-text">搜索城市，查看实时天气、逐小时降雨、未来几天趋势，并自动给出是否带伞、怎么穿、什么时候避雨的建议。</p>
+        <p class="eyebrow">Weather Pulse</p>
+        <h1>看天气，也看今天适不适合出门。</h1>
+        <p class="hero-text">选择省市区或直接搜索城市，查看实时天气、分时段降雨、未来趋势，并给出是否带伞、怎么穿、何时避雨的实用提示。</p>
       </div>
 
       <form class="search-card" id="search-form">
         <label for="city-input">选择地区</label>
         <div class="search-row">
-          <input id="city-input" name="city" type="search" autocomplete="off" placeholder="例如：浠水 / 武汉 / 上海" value="浠水">
+          <input id="city-input" name="city" type="search" autocomplete="off" placeholder="搜索城市 / 区县，例如：浠水、武汉、上海" value="浠水">
           <button type="submit">查看</button>
         </div>
-        <div class="quick-cities" aria-label="常用城市">
-          <button type="button" data-city="浠水">浠水</button>
-          <button type="button" data-city="黄冈">黄冈</button>
-          <button type="button" data-city="武汉">武汉</button>
-          <button type="button" data-city="上海">上海</button>
+
+        <div class="area-picker" id="area-picker">
+          <div class="picker-tabs" aria-label="地区层级">
+            <button type="button" class="active" data-level="province">省份</button>
+            <button type="button" data-level="city" disabled>城市</button>
+            <button type="button" data-level="district" disabled>区县</button>
+          </div>
+
+          <div class="recent-panel" id="recent-panel" hidden>
+            <div class="picker-title">最近搜索</div>
+            <div class="chip-grid" id="recent-list"></div>
+          </div>
+
+          <div class="picker-title" id="picker-title">选择省份</div>
+          <div class="chip-grid area-options" id="area-options"></div>
         </div>
       </form>
     </section>
@@ -41,7 +57,7 @@
     <section class="dashboard" id="dashboard" hidden>
       <article class="current-card">
         <div>
-          <p class="section-label" id="location-label">湖北黄冈浠水</p>
+          <p class="section-label" id="location-label">湖北 · 黄冈 · 浠水</p>
           <h2 id="weather-title">多云</h2>
           <p class="summary" id="weather-summary">适合出门，注意午后降雨变化。</p>
         </div>
