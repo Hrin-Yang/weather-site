@@ -335,6 +335,14 @@ h1 {
   white-space: nowrap;
 }
 
+.empty-hint {
+  display: block;
+  width: 100%;
+  padding: 10px 2px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .recent-panel {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);

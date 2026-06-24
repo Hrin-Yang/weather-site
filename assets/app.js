@@ -81,17 +81,43 @@ tabButtons.forEach((button) => {
 init();
 
 async function init() {
-  try {
+  if (window.CHINA_AREA_DATA) {
+    pickerState.areaData = window.CHINA_AREA_DATA;
+  } else {
+    try {
     const response = await fetch("./assets/area-data.json");
     pickerState.areaData = await response.json();
-  } catch {
-    pickerState.areaData = {};
+    } catch {
+      pickerState.areaData = getFallbackAreaData();
+    }
   }
 
   renderHotCities();
   renderHistory();
   renderAreaOptions();
   loadWeather("浠水");
+}
+
+function getFallbackAreaData() {
+  return {
+    "湖北省": {
+      "武汉市": ["江岸区", "江汉区", "硚口区", "汉阳区", "武昌区", "洪山区", "东西湖区", "江夏区", "黄陂区"],
+      "黄冈市": ["黄州区", "团风县", "红安县", "罗田县", "英山县", "浠水县", "蕲春县", "黄梅县", "麻城市", "武穴市"],
+      "黄石市": ["黄石港区", "西塞山区", "下陆区", "铁山区", "阳新县", "大冶市"],
+      "宜昌市": ["西陵区", "伍家岗区", "点军区", "夷陵区", "远安县", "兴山县", "秭归县", "宜都市", "当阳市", "枝江市"],
+      "襄阳市": ["襄城区", "樊城区", "襄州区", "南漳县", "谷城县", "保康县", "枣阳市", "宜城市", "老河口市"]
+    },
+    "北京市": {
+      "市辖区": ["东城区", "西城区", "朝阳区", "海淀区", "丰台区", "通州区", "昌平区", "大兴区"]
+    },
+    "上海市": {
+      "市辖区": ["黄浦区", "徐汇区", "长宁区", "静安区", "普陀区", "浦东新区", "闵行区", "宝山区", "嘉定区", "松江区"]
+    },
+    "广东省": {
+      "广州市": ["越秀区", "海珠区", "荔湾区", "天河区", "白云区", "番禺区", "黄埔区", "南沙区"],
+      "深圳市": ["罗湖区", "福田区", "南山区", "宝安区", "龙岗区", "盐田区", "龙华区", "坪山区"]
+    }
+  };
 }
 
 function openDropdown() {
@@ -367,6 +393,14 @@ function matchArea(areaName, keyword) {
 
 function renderChips(items, handler) {
   areaOptions.innerHTML = "";
+  if (!items.length) {
+    const empty = document.createElement("span");
+    empty.className = "empty-hint";
+    empty.textContent = "暂无下级地区，请检查地区数据是否已上传。";
+    areaOptions.appendChild(empty);
+    return;
+  }
+
   items.forEach((item) => {
     const label = typeof item === "string" ? item : item.label;
     const button = document.createElement("button");
