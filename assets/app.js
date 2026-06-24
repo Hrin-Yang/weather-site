@@ -137,36 +137,96 @@ function setStatus(message, isError = false) {
 
 async function locateUser() {
   if (!navigator.geolocation) {
-    setStatus("当前浏览器不支持定位，可以直接搜索城市。", true);
+    const message = "当前浏览器不支持定位，请直接搜索城市或区县。";
+    alert(message);
+    setStatus(message, true);
     return;
   }
 
-  setStatus("正在获取当前位置...");
+  setStatus("正在快速定位当前位置...");
   locationTitle.textContent = "正在定位...";
-  locationSubtitle.textContent = "请在浏览器弹窗中允许定位权限";
+  locationSubtitle.textContent = "正在快速获取设备当前位置";
   locationAction.textContent = "等待";
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const place = await buildLocationPlace(position.coords.latitude, position.coords.longitude);
-      pickerState.currentLocation = place;
-      localStorage.setItem(LOCATION_KEY, JSON.stringify(place));
-      input.value = place.inputName;
-      renderLocationRow();
-      closeDropdown();
-      setStatus(`已定位：${formatPlace(place)}，点击查看即可查询当前位置天气。`);
-    },
-    () => {
-      renderLocationRow();
-      const message = "您需要打开定位信息并允许浏览器定位权限，才可以使用此功能。";
-      alert(message);
-      setStatus(message, true);
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-  );
+  try {
+    const position = await getFastPosition();
+    const place = await buildLocationPlace(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+    applyLocatedPlace(place);
+    setStatus(`已定位：${formatPlace(place)}，点击查看即可查询当前位置天气。`);
+    refineLocationInBackground(position.coords.accuracy);
+  } catch {
+    renderLocationRow();
+    const message = "您需要打开手机定位信息，并允许浏览器使用定位权限，才可以使用此功能。";
+    alert(message);
+    setStatus(message, true);
+  }
 }
 
-async function buildLocationPlace(latitude, longitude) {
+function applyLocatedPlace(place) {
+  pickerState.currentLocation = place;
+  localStorage.setItem(LOCATION_KEY, JSON.stringify(place));
+  input.value = place.inputName;
+  renderLocationRow();
+  closeDropdown();
+}
+
+function getFastPosition() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+      timeout: 3000
+    });
+  });
+}
+
+function refineLocationInBackground(currentAccuracy) {
+  getBestPosition(5000)
+    .then(async (position) => {
+      if (currentAccuracy && position.coords.accuracy >= currentAccuracy) return;
+      const place = await buildLocationPlace(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+      applyLocatedPlace(place);
+      setStatus(`已更新定位：${formatPlace(place)}，点击查看即可查询当前位置天气。`);
+    })
+    .catch(() => {});
+}
+
+function getBestPosition(duration = 7000) {
+  return new Promise((resolve, reject) => {
+    let bestPosition = null;
+    let settled = false;
+    let watchId = null;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (bestPosition) {
+        resolve(bestPosition);
+      } else {
+        reject(new Error("location unavailable"));
+      }
+    };
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+          bestPosition = position;
+        }
+
+        if (position.coords.accuracy <= 80) {
+          finish();
+        }
+      },
+      () => finish(),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: duration + 2000 }
+    );
+
+    window.setTimeout(finish, duration);
+  });
+}
+
+async function buildLocationPlace(latitude, longitude, accuracy = null) {
   const fallback = {
     name: "当前位置",
     admin1: "",
@@ -174,34 +234,76 @@ async function buildLocationPlace(latitude, longitude) {
     country: "中国",
     latitude,
     longitude,
+    accuracy,
     isCurrentLocation: true,
     inputName: "当前位置"
   };
 
   try {
-    const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
-    url.searchParams.set("latitude", latitude);
-    url.searchParams.set("longitude", longitude);
-    url.searchParams.set("language", "zh");
-    url.searchParams.set("format", "json");
-    const response = await fetch(url);
-    const data = await response.json();
-    const result = data.results && data.results[0];
-    if (!result) return fallback;
-
-    return {
-      name: result.name || "当前位置",
-      admin1: result.admin1 || "",
-      admin2: result.admin2 || "",
-      country: result.country || "中国",
-      latitude,
-      longitude,
-      isCurrentLocation: true,
-      inputName: cleanAreaName(result.name || result.admin2 || result.admin1 || "当前位置")
-    };
+    return await reverseGeocodeWithBigDataCloud(latitude, longitude, accuracy);
   } catch {
-    return fallback;
+    try {
+      return await reverseGeocodeWithOpenMeteo(latitude, longitude, accuracy);
+    } catch {
+      return fallback;
+    }
   }
+}
+
+async function reverseGeocodeWithBigDataCloud(latitude, longitude, accuracy) {
+  const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+  url.searchParams.set("latitude", latitude);
+  url.searchParams.set("longitude", longitude);
+  url.searchParams.set("localityLanguage", "zh");
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("reverse geocode failed");
+  const data = await response.json();
+  const adminLevels = data.localityInfo && data.localityInfo.administrative;
+  const names = Array.isArray(adminLevels) ? adminLevels.map((item) => item.name).filter(Boolean) : [];
+  const country = data.countryName || "中国";
+  const province = names.find((name) => /(省|市|自治区|特别行政区)$/.test(name)) || data.principalSubdivision || "";
+  const district = names.find((name) => /(区|县|市)$/.test(name) && name !== province) || data.locality || "";
+  const city = names.find((name) => /(市|地区|自治州|盟)$/.test(name) && name !== province && name !== district) || data.city || data.locality || "";
+  const inputName = cleanAreaName(district || city || province || data.locality || "当前位置");
+
+  return {
+    name: district || city || data.locality || "当前位置",
+    admin1: province,
+    admin2: city,
+    country,
+    latitude,
+    longitude,
+    accuracy,
+    isCurrentLocation: true,
+    inputName
+  };
+}
+
+async function reverseGeocodeWithOpenMeteo(latitude, longitude, accuracy) {
+  const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
+  url.searchParams.set("latitude", latitude);
+  url.searchParams.set("longitude", longitude);
+  url.searchParams.set("language", "zh");
+  url.searchParams.set("format", "json");
+
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("reverse geocode failed");
+  const data = await response.json();
+  const result = data.results && data.results[0];
+  if (!result) throw new Error("reverse geocode empty");
+
+  return {
+    name: result.name || "当前位置",
+    admin1: result.admin1 || "",
+    admin2: result.admin2 || "",
+    country: result.country || "中国",
+    latitude,
+    longitude,
+    accuracy,
+    isCurrentLocation: true,
+    inputName: cleanAreaName(result.name || result.admin2 || result.admin1 || "当前位置")
+  };
 }
 
 function renderLocationRow() {
@@ -554,7 +656,7 @@ function getWeather(code) {
 }
 
 function formatPlace(place) {
-  return [place.country, place.admin1, place.admin2, place.name]
+  return [place.admin1, place.admin2, place.name]
     .filter(Boolean)
     .map(cleanAreaName)
     .filter((value, index, list) => list.indexOf(value) === index)
