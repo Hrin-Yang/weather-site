@@ -20,7 +20,7 @@
     <section class="hero-panel">
       <div class="hero-copy">
         <p class="eyebrow">Weather Pulse</p>
-        <h1>看天气，也看今天适不适合出门。</h1>
+        <h1 class="gradient-title">Hello 小淇<br>这次你想知道哪个地区的天气呢</h1>
         <p class="hero-text">选择地区或直接搜索城市，查看实时天气、分时段降雨、未来趋势，并给出是否带伞、怎么穿、何时避雨的实用提示。</p>
       </div>
 
@@ -29,10 +29,21 @@
         <div class="search-box" id="search-box">
           <div class="search-row">
             <input id="city-input" name="city" type="search" autocomplete="off" placeholder="搜索城市 / 区县，例如：浠水、武汉、上海" value="浠水">
+            <button type="button" class="locate-button" id="locate-button">定位</button>
             <button type="submit">查看</button>
           </div>
 
           <div class="area-dropdown" id="area-dropdown" hidden>
+            <div class="dropdown-section location-panel" id="location-panel">
+              <button type="button" class="location-row" id="location-row">
+                <span>
+                  <strong id="location-title">使用当前位置</strong>
+                  <small id="location-subtitle">授权后会优先显示你的定位天气</small>
+                </span>
+                <span class="location-action" id="location-action">定位</span>
+              </button>
+            </div>
+
             <div class="dropdown-section" id="recent-panel" hidden>
               <div class="picker-title">最近搜索</div>
               <div class="chip-grid" id="recent-list"></div>

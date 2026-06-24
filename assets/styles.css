@@ -192,6 +192,24 @@ h1 {
   letter-spacing: 0;
 }
 
+.gradient-title {
+  color: transparent;
+  background: linear-gradient(100deg, #7ce7ff 0%, #8b5cff 32%, #ff55d8 64%, #56f5a5 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: titleFlow 8s ease-in-out infinite alternate;
+}
+
+@keyframes titleFlow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
 .hero-text {
   max-width: 680px;
   margin-bottom: 0;
@@ -300,6 +318,40 @@ h1 {
 .dropdown-section:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+.location-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(124, 231, 255, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: var(--ink);
+  text-align: left;
+  background: linear-gradient(135deg, rgba(74, 168, 255, 0.18), rgba(255, 85, 216, 0.14));
+}
+
+.location-row strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.location-row small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.location-action {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: white;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--blue), var(--violet), var(--pink));
 }
 
 .picker-tabs {

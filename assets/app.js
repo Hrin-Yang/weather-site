@@ -6,6 +6,11 @@ const statusBar = document.querySelector("#status-bar");
 const statusText = document.querySelector("#status-text");
 const dashboard = document.querySelector("#dashboard");
 const contentGrid = document.querySelector("#content-grid");
+const locateButton = document.querySelector("#locate-button");
+const locationRow = document.querySelector("#location-row");
+const locationTitle = document.querySelector("#location-title");
+const locationSubtitle = document.querySelector("#location-subtitle");
+const locationAction = document.querySelector("#location-action");
 const recentPanel = document.querySelector("#recent-panel");
 const recentList = document.querySelector("#recent-list");
 const hotList = document.querySelector("#hot-list");
@@ -14,6 +19,7 @@ const pickerTitle = document.querySelector("#picker-title");
 const tabButtons = [...document.querySelectorAll("[data-level]")];
 
 const HISTORY_KEY = "weather-site-search-history";
+const LOCATION_KEY = "weather-site-current-location";
 const hotCities = ["北京", "上海", "广州", "深圳", "杭州", "成都", "重庆", "武汉", "南京", "苏州", "长沙", "西安", "黄冈", "浠水"];
 
 const cityAliases = {
@@ -49,7 +55,8 @@ const pickerState = {
   areaData: {},
   province: "",
   city: "",
-  level: "province"
+  level: "province",
+  currentLocation: null
 };
 
 form.addEventListener("submit", (event) => {
@@ -74,6 +81,17 @@ document.addEventListener("pointerdown", (event) => {
   }
 });
 
+locateButton.addEventListener("click", () => locateUser());
+locationRow.addEventListener("click", () => {
+  if (pickerState.currentLocation) {
+    closeDropdown();
+    loadWeatherByPlace(pickerState.currentLocation, true);
+    return;
+  }
+
+  locateUser();
+});
+
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => showLevel(button.dataset.level));
 });
@@ -81,43 +99,13 @@ tabButtons.forEach((button) => {
 init();
 
 async function init() {
-  if (window.CHINA_AREA_DATA) {
-    pickerState.areaData = window.CHINA_AREA_DATA;
-  } else {
-    try {
-    const response = await fetch("./assets/area-data.json");
-    pickerState.areaData = await response.json();
-    } catch {
-      pickerState.areaData = getFallbackAreaData();
-    }
-  }
-
+  pickerState.areaData = window.CHINA_AREA_DATA || getFallbackAreaData();
+  pickerState.currentLocation = getStoredLocation();
+  renderLocationRow();
   renderHotCities();
   renderHistory();
   renderAreaOptions();
   loadWeather("浠水");
-}
-
-function getFallbackAreaData() {
-  return {
-    "湖北省": {
-      "武汉市": ["江岸区", "江汉区", "硚口区", "汉阳区", "武昌区", "洪山区", "东西湖区", "江夏区", "黄陂区"],
-      "黄冈市": ["黄州区", "团风县", "红安县", "罗田县", "英山县", "浠水县", "蕲春县", "黄梅县", "麻城市", "武穴市"],
-      "黄石市": ["黄石港区", "西塞山区", "下陆区", "铁山区", "阳新县", "大冶市"],
-      "宜昌市": ["西陵区", "伍家岗区", "点军区", "夷陵区", "远安县", "兴山县", "秭归县", "宜都市", "当阳市", "枝江市"],
-      "襄阳市": ["襄城区", "樊城区", "襄州区", "南漳县", "谷城县", "保康县", "枣阳市", "宜城市", "老河口市"]
-    },
-    "北京市": {
-      "市辖区": ["东城区", "西城区", "朝阳区", "海淀区", "丰台区", "通州区", "昌平区", "大兴区"]
-    },
-    "上海市": {
-      "市辖区": ["黄浦区", "徐汇区", "长宁区", "静安区", "普陀区", "浦东新区", "闵行区", "宝山区", "嘉定区", "松江区"]
-    },
-    "广东省": {
-      "广州市": ["越秀区", "海珠区", "荔湾区", "天河区", "白云区", "番禺区", "黄埔区", "南沙区"],
-      "深圳市": ["罗湖区", "福田区", "南山区", "宝安区", "龙岗区", "盐田区", "龙华区", "坪山区"]
-    }
-  };
 }
 
 function openDropdown() {
@@ -130,6 +118,7 @@ function closeDropdown() {
 }
 
 function renderPickerHome() {
+  renderLocationRow();
   renderHistory();
   dropdown.classList.remove("is-compact");
   pickerState.level = "province";
@@ -139,6 +128,91 @@ function renderPickerHome() {
 function setStatus(message, isError = false) {
   statusText.textContent = message;
   statusBar.classList.toggle("error", isError);
+}
+
+async function locateUser() {
+  if (!navigator.geolocation) {
+    setStatus("当前浏览器不支持定位，可以直接搜索城市。", true);
+    return;
+  }
+
+  setStatus("正在获取当前位置...");
+  locationTitle.textContent = "正在定位...";
+  locationSubtitle.textContent = "请在浏览器弹窗中允许定位权限";
+  locationAction.textContent = "等待";
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const place = await buildLocationPlace(position.coords.latitude, position.coords.longitude);
+      pickerState.currentLocation = place;
+      localStorage.setItem(LOCATION_KEY, JSON.stringify(place));
+      renderLocationRow();
+      closeDropdown();
+      loadWeatherByPlace(place, true);
+    },
+    () => {
+      renderLocationRow();
+      setStatus("定位未成功，请允许浏览器定位权限，或手动搜索地区。", true);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+async function buildLocationPlace(latitude, longitude) {
+  const fallback = {
+    name: "当前位置",
+    admin1: "",
+    admin2: "",
+    country: "中国",
+    latitude,
+    longitude,
+    isCurrentLocation: true
+  };
+
+  try {
+    const url = new URL("https://geocoding-api.open-meteo.com/v1/reverse");
+    url.searchParams.set("latitude", latitude);
+    url.searchParams.set("longitude", longitude);
+    url.searchParams.set("language", "zh");
+    url.searchParams.set("format", "json");
+    const response = await fetch(url);
+    const data = await response.json();
+    const result = data.results && data.results[0];
+    if (!result) return fallback;
+
+    return {
+      name: result.name || "当前位置",
+      admin1: result.admin1 || "",
+      admin2: result.admin2 || "",
+      country: result.country || "中国",
+      latitude,
+      longitude,
+      isCurrentLocation: true
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function renderLocationRow() {
+  if (pickerState.currentLocation) {
+    locationTitle.textContent = `当前位置 · ${formatPlace(pickerState.currentLocation)}`;
+    locationSubtitle.textContent = "点击直接查看当前位置天气";
+    locationAction.textContent = "查看";
+    return;
+  }
+
+  locationTitle.textContent = "使用当前位置";
+  locationSubtitle.textContent = "授权后会优先显示你的定位天气";
+  locationAction.textContent = "定位";
+}
+
+function getStoredLocation() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCATION_KEY));
+  } catch {
+    return null;
+  }
 }
 
 async function loadWeather(city) {
@@ -153,16 +227,25 @@ async function loadWeather(city) {
 
   try {
     const place = await resolvePlace(city);
-    const weather = await fetchWeather(place);
-    renderWeather(place, weather);
-    saveHistory(city);
-    renderHistory();
-    setStatus(`已更新：${formatPlace(place)}`);
-    dashboard.hidden = false;
-    contentGrid.hidden = false;
+    await loadWeatherByPlace(place, false, city);
   } catch (error) {
     setStatus(error.message || "天气数据读取失败，请换个城市试试。", true);
   }
+}
+
+async function loadWeatherByPlace(place, fromLocation = false, historyName = "") {
+  dashboard.hidden = true;
+  contentGrid.hidden = true;
+
+  const weather = await fetchWeather(place);
+  renderWeather(place, weather);
+  if (!fromLocation) {
+    saveHistory(historyName || place.name);
+    renderHistory();
+  }
+  setStatus(`已更新：${formatPlace(place)}`);
+  dashboard.hidden = false;
+  contentGrid.hidden = false;
 }
 
 async function resolvePlace(city) {
@@ -585,4 +668,13 @@ function formatDate(value, index) {
   if (index === 0) return "今天";
   if (index === 1) return "明天";
   return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", weekday: "short" }).format(new Date(value));
+}
+
+function getFallbackAreaData() {
+  return {
+    "湖北省": {
+      "武汉市": ["江岸区", "江汉区", "硚口区", "汉阳区", "武昌区", "洪山区", "东西湖区", "江夏区", "黄陂区"],
+      "黄冈市": ["黄州区", "团风县", "红安县", "罗田县", "英山县", "浠水县", "蕲春县", "黄梅县", "麻城市", "武穴市"]
+    }
+  };
 }
