@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>天气灵感站</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Weather Moodboard</p>
+        <h1>天气不只看温度，也看今天适不适合出门。</h1>
+        <p class="hero-text">搜索城市，查看实时天气、逐小时降雨、未来几天趋势，并自动给出是否带伞、怎么穿、什么时候避雨的建议。</p>
+      </div>
+
+      <form class="search-card" id="search-form">
+        <label for="city-input">选择地区</label>
+        <div class="search-row">
+          <input id="city-input" name="city" type="search" autocomplete="off" placeholder="例如：浠水 / 武汉 / 上海" value="浠水">
+          <button type="submit">查看</button>
+        </div>
+        <div class="quick-cities" aria-label="常用城市">
+          <button type="button" data-city="浠水">浠水</button>
+          <button type="button" data-city="黄冈">黄冈</button>
+          <button type="button" data-city="武汉">武汉</button>
+          <button type="button" data-city="上海">上海</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="status-bar" id="status-bar">
+      <span class="pulse"></span>
+      <span id="status-text">正在读取天气数据...</span>
+    </section>
+
+    <section class="dashboard" id="dashboard" hidden>
+      <article class="current-card">
+        <div>
+          <p class="section-label" id="location-label">湖北黄冈浠水</p>
+          <h2 id="weather-title">多云</h2>
+          <p class="summary" id="weather-summary">适合出门，注意午后降雨变化。</p>
+        </div>
+        <div class="temp-wrap">
+          <span id="weather-icon" aria-hidden="true">☁</span>
+          <strong id="current-temp">--°</strong>
+        </div>
+      </article>
+
+      <article class="advice-card" id="advice-card">
+        <p class="section-label">今日提示</p>
+        <h3 id="advice-title">正在判断</h3>
+        <p id="advice-body">稍等一下，马上给你更像朋友提醒的天气建议。</p>
+      </article>
+
+      <article class="metrics-grid">
+        <div class="metric">
+          <span>降雨概率</span>
+          <strong id="rain-probability">--%</strong>
+        </div>
+        <div class="metric">
+          <span>预计降水</span>
+          <strong id="rain-total">-- mm</strong>
+        </div>
+        <div class="metric">
+          <span>最高 / 最低</span>
+          <strong id="temp-range">--° / --°</strong>
+        </div>
+        <div class="metric">
+          <span>体感温度</span>
+          <strong id="apparent-temp">--°</strong>
+        </div>
+      </article>
+    </section>
+
+    <section class="content-grid" id="content-grid" hidden>
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Hourly Rain</p>
+            <h3>分时段降雨</h3>
+          </div>
+          <span id="best-window">--</span>
+        </div>
+        <div class="hour-list" id="hour-list"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">7 Days</p>
+            <h3>未来趋势</h3>
+          </div>
+        </div>
+        <div class="forecast-list" id="forecast-list"></div>
+      </article>
+
+      <article class="panel lifestyle-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-label">Life Tips</p>
+            <h3>生活建议</h3>
+          </div>
+        </div>
+        <div class="tips-grid" id="tips-grid"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>
