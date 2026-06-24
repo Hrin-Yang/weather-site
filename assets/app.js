@@ -269,24 +269,100 @@ function renderFilteredAreas(keyword) {
     return;
   }
 
+  const provinceMatch = findProvinceMatch(keyword);
+  if (provinceMatch) {
+    pickerState.province = provinceMatch;
+    pickerState.city = "";
+    pickerState.level = "city";
+    renderLevelChildren("city");
+    return;
+  }
+
+  const cityMatch = findCityMatch(keyword);
+  if (cityMatch) {
+    pickerState.province = cityMatch.province;
+    pickerState.city = cityMatch.city;
+    pickerState.level = "district";
+    renderLevelChildren("district");
+    return;
+  }
+
   const results = [];
   Object.entries(pickerState.areaData).forEach(([province, cities]) => {
-    if (province.includes(keyword)) results.push({ label: province, value: province });
+    if (matchArea(province, keyword)) results.push({ label: province, value: province, next: "city" });
     Object.entries(cities).forEach(([city, districts]) => {
-      if (city.includes(keyword)) results.push({ label: `${province} · ${city}`, value: city });
+      if (matchArea(city, keyword)) results.push({ label: `${province} · ${city}`, value: city, province, next: "district" });
       districts.forEach((district) => {
-        if (district.includes(keyword)) results.push({ label: `${city} · ${district}`, value: district });
+        if (matchArea(district, keyword)) results.push({ label: `${city} · ${district}`, value: district, final: true });
       });
     });
   });
 
   pickerTitle.textContent = results.length ? "搜索匹配地区" : "未找到匹配地区，可直接点查看";
   renderChips(results.slice(0, 36), (item) => {
+    if (item.next === "city") {
+      selectProvince(item.value);
+      return;
+    }
+
+    if (item.next === "district") {
+      pickerState.province = item.province;
+      selectCity(item.value);
+      return;
+    }
+
     const value = item.value || item;
     input.value = cleanAreaName(value);
     closeDropdown();
     loadWeather(value);
   });
+}
+
+function renderLevelChildren(level) {
+  tabButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.level === level);
+    if (button.dataset.level === "city") button.disabled = !pickerState.province;
+    if (button.dataset.level === "district") button.disabled = !pickerState.city;
+  });
+
+  if (level === "city") {
+    pickerTitle.textContent = `${cleanAreaName(pickerState.province)} 下属城市`;
+    renderChips(Object.keys(pickerState.areaData[pickerState.province] || {}), selectCity);
+    return;
+  }
+
+  pickerTitle.textContent = `${cleanAreaName(pickerState.city)} 下属区县`;
+  renderChips((pickerState.areaData[pickerState.province] && pickerState.areaData[pickerState.province][pickerState.city]) || [], selectDistrict);
+}
+
+function findProvinceMatch(keyword) {
+  const cleanKeyword = cleanAreaName(keyword);
+  return Object.keys(pickerState.areaData).find((province) => {
+    const cleanProvince = cleanAreaName(province);
+    return cleanProvince === cleanKeyword || province === keyword;
+  });
+}
+
+function findCityMatch(keyword) {
+  const cleanKeyword = cleanAreaName(keyword);
+  for (const [province, cities] of Object.entries(pickerState.areaData)) {
+    const city = Object.keys(cities).find((item) => {
+      const cleanCity = cleanAreaName(item);
+      return cleanCity === cleanKeyword || item === keyword;
+    });
+
+    if (city) {
+      return { province, city };
+    }
+  }
+
+  return null;
+}
+
+function matchArea(areaName, keyword) {
+  const cleanKeyword = cleanAreaName(keyword);
+  const cleanName = cleanAreaName(areaName);
+  return cleanName.includes(cleanKeyword) || areaName.includes(keyword);
 }
 
 function renderChips(items, handler) {
@@ -306,14 +382,14 @@ function selectProvince(province) {
   pickerState.city = "";
   pickerState.level = "city";
   input.value = cleanAreaName(province);
-  renderAreaOptions();
+  renderLevelChildren("city");
 }
 
 function selectCity(city) {
   pickerState.city = city;
   pickerState.level = "district";
   input.value = cleanAreaName(city);
-  renderAreaOptions();
+  renderLevelChildren("district");
 }
 
 function selectDistrict(district) {
