@@ -61,7 +61,12 @@ const pickerState = {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  loadWeather(input.value.trim());
+  const query = input.value.trim();
+  if (pickerState.currentLocation && query === pickerState.currentLocation.inputName) {
+    loadWeatherByPlace(pickerState.currentLocation, true);
+  } else {
+    loadWeather(query);
+  }
   closeDropdown();
 });
 
@@ -84,8 +89,8 @@ document.addEventListener("pointerdown", (event) => {
 locateButton.addEventListener("click", () => locateUser());
 locationRow.addEventListener("click", () => {
   if (pickerState.currentLocation) {
+    input.value = pickerState.currentLocation.inputName;
     closeDropdown();
-    loadWeatherByPlace(pickerState.currentLocation, true);
     return;
   }
 
@@ -146,13 +151,16 @@ async function locateUser() {
       const place = await buildLocationPlace(position.coords.latitude, position.coords.longitude);
       pickerState.currentLocation = place;
       localStorage.setItem(LOCATION_KEY, JSON.stringify(place));
+      input.value = place.inputName;
       renderLocationRow();
       closeDropdown();
-      loadWeatherByPlace(place, true);
+      setStatus(`已定位：${formatPlace(place)}，点击查看即可查询当前位置天气。`);
     },
     () => {
       renderLocationRow();
-      setStatus("定位未成功，请允许浏览器定位权限，或手动搜索地区。", true);
+      const message = "您需要打开定位信息并允许浏览器定位权限，才可以使用此功能。";
+      alert(message);
+      setStatus(message, true);
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
   );
@@ -166,7 +174,8 @@ async function buildLocationPlace(latitude, longitude) {
     country: "中国",
     latitude,
     longitude,
-    isCurrentLocation: true
+    isCurrentLocation: true,
+    inputName: "当前位置"
   };
 
   try {
@@ -187,7 +196,8 @@ async function buildLocationPlace(latitude, longitude) {
       country: result.country || "中国",
       latitude,
       longitude,
-      isCurrentLocation: true
+      isCurrentLocation: true,
+      inputName: cleanAreaName(result.name || result.admin2 || result.admin1 || "当前位置")
     };
   } catch {
     return fallback;
@@ -197,8 +207,8 @@ async function buildLocationPlace(latitude, longitude) {
 function renderLocationRow() {
   if (pickerState.currentLocation) {
     locationTitle.textContent = `当前位置 · ${formatPlace(pickerState.currentLocation)}`;
-    locationSubtitle.textContent = "点击直接查看当前位置天气";
-    locationAction.textContent = "查看";
+    locationSubtitle.textContent = "点击后自动填入搜索框，再点查看查询天气";
+    locationAction.textContent = "填入";
     return;
   }
 
@@ -209,7 +219,12 @@ function renderLocationRow() {
 
 function getStoredLocation() {
   try {
-    return JSON.parse(localStorage.getItem(LOCATION_KEY));
+    const place = JSON.parse(localStorage.getItem(LOCATION_KEY));
+    if (!place) return null;
+    return {
+      ...place,
+      inputName: place.inputName || cleanAreaName(place.name || place.admin2 || place.admin1 || "当前位置")
+    };
   } catch {
     return null;
   }
